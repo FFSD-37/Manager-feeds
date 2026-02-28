@@ -3,6 +3,41 @@ import "./App.css";
 
 const API_BASE = import.meta.env.VITE_MANAGER_API || "http://localhost:3001";
 
+const TAB_CONFIG = {
+  user: [
+    { id: "overview", label: "Overview" },
+    { id: "reports", label: "Reports" },
+    { id: "moderation", label: "Moderation" },
+    { id: "feedback", label: "Feedback" },
+    { id: "users", label: "Users" },
+  ],
+  kids: [
+    { id: "overview", label: "Overview" },
+    { id: "reports", label: "Reports" },
+    { id: "moderation", label: "Moderation" },
+    { id: "feedback", label: "Feedback" },
+    { id: "users", label: "Kids Accounts" },
+  ],
+  channel: [
+    { id: "overview", label: "Overview" },
+    { id: "reports", label: "Reports" },
+    { id: "moderation", label: "Moderation" },
+    { id: "feedback", label: "Feedback" },
+    { id: "channels", label: "Channels" },
+  ],
+  revenue: [
+    { id: "overview", label: "Overview" },
+    { id: "revenue", label: "Revenue" },
+  ],
+};
+
+const TYPE_LABEL = {
+  user: "User Manager",
+  kids: "Kids Manager",
+  channel: "Channel Manager",
+  revenue: "Revenue Manager",
+};
+
 function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,26 +49,29 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [overview, setOverview] = useState({ reports: null, content: null, users: null });
+  const [overview, setOverview] = useState({
+    reports: null,
+    content: null,
+    users: null,
+    revenue: null,
+  });
   const [reports, setReports] = useState([]);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedReportPost, setSelectedReportPost] = useState(null);
+  const [reportOverlayOpen, setReportOverlayOpen] = useState(false);
   const [feedbacks, setFeedbacks] = useState([]);
   const [users, setUsers] = useState([]);
   const [channels, setChannels] = useState([]);
+  const [payments, setPayments] = useState([]);
 
   const [postId, setPostId] = useState("");
   const [reason, setReason] = useState("");
 
-  const tabs = useMemo(
-    () => [
-      { id: "overview", label: "Overview" },
-      { id: "reports", label: "Reports" },
-      { id: "moderation", label: "Moderation" },
-      { id: "feedback", label: "Feedback" },
-      { id: "users", label: "Users" },
-      { id: "channels", label: "Channels" },
-    ],
-    []
-  );
+  const managerType = me?.managerType || "user";
+
+  const tabs = useMemo(() => {
+    return TAB_CONFIG[managerType] || TAB_CONFIG.user;
+  }, [managerType]);
 
   async function api(path, options = {}) {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -97,6 +135,16 @@ function App() {
   }
 
   async function loadOverview() {
+    if (managerType === "revenue") {
+      const [rev, pay] = await Promise.all([api("/home/getRevenue"), api("/payment/list")]);
+      setOverview((prev) => ({
+        ...prev,
+        revenue: rev.rev || 0,
+      }));
+      setPayments(pay.payments || []);
+      return;
+    }
+
     const [r, c, u] = await Promise.all([
       api("/home/reportData"),
       api("/home/contentActivityToday"),
@@ -107,12 +155,34 @@ function App() {
       reports: r.data || null,
       content: c.data || null,
       users: u.count || 0,
+      revenue: null,
     });
   }
 
   async function loadReports() {
     const data = await api("/report/list");
     setReports(data.reports || []);
+  }
+
+  async function openReportOverlay(reportId) {
+    setBusy(true);
+    setMessage("");
+    try {
+      const data = await api(`/report/${reportId}/details`);
+      setSelectedReport(data.report || null);
+      setSelectedReportPost(data.post || null);
+      setReportOverlayOpen(true);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function closeReportOverlay() {
+    setReportOverlayOpen(false);
+    setSelectedReport(null);
+    setSelectedReportPost(null);
   }
 
   async function updateReport(reportId, status) {
@@ -147,6 +217,12 @@ function App() {
     setChannels(data.allchannels || []);
   }
 
+  async function loadRevenue() {
+    const [rev, pay] = await Promise.all([api("/home/getRevenue"), api("/payment/list")]);
+    setOverview((prev) => ({ ...prev, revenue: rev.rev || 0 }));
+    setPayments(pay.payments || []);
+  }
+
   async function handleRemovePost(e) {
     e.preventDefault();
     setBusy(true);
@@ -175,6 +251,7 @@ function App() {
       if (tabId === "feedback") await loadFeedbacks();
       if (tabId === "users") await loadUsers();
       if (tabId === "channels") await loadChannels();
+      if (tabId === "revenue") await loadRevenue();
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -187,9 +264,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!tabs.some((t) => t.id === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [tabs, activeTab]);
+
+  useEffect(() => {
     if (!isAuthenticated) return;
     loadByTab(activeTab);
-  }, [activeTab, isAuthenticated]);
+  }, [activeTab, isAuthenticated, managerType]);
 
   if (!authChecked) {
     return <div className="loading-screen">Checking manager session...</div>;
@@ -204,7 +287,7 @@ function App() {
           <div className="auth-title-wrap">
             <p className="eyebrow">Feeds Platform</p>
             <h1>Manager Control Desk</h1>
-            <p>Sign in with your manager credentials to review reports and moderate content.</p>
+            <p>Sign in with your manager credentials to review assigned operations.</p>
           </div>
           <input
             type="text"
@@ -243,10 +326,11 @@ function App() {
             <div>
               <strong>{me?.username || "Manager"}</strong>
               <p>{me?.email || "No email"}</p>
+              <span className="type-chip">{TYPE_LABEL[managerType] || "Manager"}</span>
             </div>
           </div>
 
-          <nav className="nav-list">
+          <nav className="nav-list" aria-label="Manager modules">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -267,7 +351,7 @@ function App() {
           <header className="panel-header">
             <div>
               <h1>{tabs.find((t) => t.id === activeTab)?.label || "Dashboard"}</h1>
-              <p>Manager-level moderation workspace</p>
+              <p>{TYPE_LABEL[managerType] || "Manager"} workspace</p>
             </div>
             <button className="refresh-btn" onClick={() => loadByTab(activeTab)} disabled={busy}>
               {busy ? "Refreshing..." : "Refresh"}
@@ -276,7 +360,7 @@ function App() {
 
           {message ? <div className="banner">{message}</div> : null}
 
-          {activeTab === "overview" && (
+          {activeTab === "overview" && managerType !== "revenue" && (
             <section className="kpi-grid">
               <article className="kpi-card stagger-1">
                 <h3>Report Queue</h3>
@@ -291,9 +375,24 @@ function App() {
                 <p>Stories: {overview.content?.storiesToday ?? "-"}</p>
               </article>
               <article className="kpi-card stagger-3">
-                <h3>Total Clients</h3>
+                <h3>Assigned Clients</h3>
                 <p className="kpi-main">{overview.users ?? "-"}</p>
-                <p>Users + Channels tracked in feed system</p>
+                <p>Count based on your manager type scope</p>
+              </article>
+            </section>
+          )}
+
+          {activeTab === "overview" && managerType === "revenue" && (
+            <section className="kpi-grid two-col">
+              <article className="kpi-card stagger-1">
+                <h3>Total Revenue</h3>
+                <p className="kpi-main">? {Number(overview.revenue || 0).toLocaleString()}</p>
+                <p>Completed payments and premium transactions</p>
+              </article>
+              <article className="kpi-card stagger-2">
+                <h3>Transactions</h3>
+                <p className="kpi-main">{payments.length}</p>
+                <p>Latest records available in Revenue tab</p>
               </article>
             </section>
           )}
@@ -316,6 +415,9 @@ function App() {
                     </span>
                   </span>
                   <span className="btn-row">
+                    <button onClick={() => openReportOverlay(r._id)} disabled={busy}>
+                      View
+                    </button>
                     <button onClick={() => updateReport(r._id, "Pending")} disabled={busy}>
                       Mark Pending
                     </button>
@@ -371,7 +473,8 @@ function App() {
                 <article className="info-card animated-row" style={{ animationDelay: `${idx * 35}ms` }} key={u._id}>
                   <strong>{u.username || u.name || "Unnamed"}</strong>
                   <p>{u.email || "No email"}</p>
-                  <p>Followers: {u.followers ?? 0}</p>
+                  <p>Type: {u.type || "Normal"}</p>
+                  <p>Followers: {u.followers?.length ?? u.followers ?? 0}</p>
                 </article>
               ))}
               {!users.length ? <p className="empty">No users found.</p> : null}
@@ -384,14 +487,97 @@ function App() {
                 <article className="info-card animated-row" style={{ animationDelay: `${idx * 35}ms` }} key={c._id}>
                   <strong>{c.channelName || c.username || c.name || "Unnamed channel"}</strong>
                   <p>{c.email || "No email"}</p>
-                  <p>Followers: {c.followers ?? 0}</p>
+                  <p>Followers: {c.followers?.length ?? c.followers ?? 0}</p>
                 </article>
               ))}
               {!channels.length ? <p className="empty">No channels found.</p> : null}
             </section>
           )}
+
+          {activeTab === "revenue" && (
+            <section className="table-wrap">
+              <div className="table-head table-row revenue-row">
+                <span>Payment Id</span>
+                <span>User</span>
+                <span>Status</span>
+                <span>Amount</span>
+              </div>
+              {payments.map((p, idx) => (
+                <div className="table-row revenue-row animated-row" style={{ animationDelay: `${idx * 35}ms` }} key={p._id}>
+                  <span>{p.paymentId || p._id || "-"}</span>
+                  <span>{p.username || p.user || "-"}</span>
+                  <span>
+                    <span className={p.status === "Completed" ? "pill done" : "pill pending"}>
+                      {p.status || "Pending"}
+                    </span>
+                  </span>
+                  <span>? {Number(p.amount || 0).toLocaleString()}</span>
+                </div>
+              ))}
+              {!payments.length ? <p className="empty">No payments found.</p> : null}
+            </section>
+          )}
         </main>
       </div>
+
+      {reportOverlayOpen ? (
+        <div className="overlay-backdrop" onClick={closeReportOverlay}>
+          <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+            <div className="overlay-head">
+              <h3>Report Details</h3>
+              <button className="overlay-close" onClick={closeReportOverlay}>
+                Close
+              </button>
+            </div>
+
+            <div className="overlay-grid">
+              <div>
+                <p>
+                  <strong>Report #:</strong> {selectedReport?.report_number || "-"}
+                </p>
+                <p>
+                  <strong>Status:</strong> {selectedReport?.status || "-"}
+                </p>
+                <p>
+                  <strong>Reason:</strong> {selectedReport?.reason || "No reason provided"}
+                </p>
+                <p>
+                  <strong>Scope:</strong> {selectedReport?.scopeType || "-"}
+                </p>
+              </div>
+
+              <div>
+                {selectedReport?.post_id === "On account" ? (
+                  <div className="overlay-empty">
+                    Account-level report. No post preview is available.
+                  </div>
+                ) : selectedReportPost?.url ? (
+                  <div className="overlay-media-wrap">
+                    {selectedReportPost?.type === "Reels" ? (
+                      <video src={selectedReportPost.url} controls className="overlay-media" />
+                    ) : (
+                      <img src={selectedReportPost.url} alt="Reported post" className="overlay-media" />
+                    )}
+                    <p>
+                      <strong>Author:</strong> {selectedReportPost?.author || "-"}
+                    </p>
+                    <p>
+                      <strong>Post ID:</strong> {selectedReportPost?.id || "-"}
+                    </p>
+                    <p>
+                      <strong>Content:</strong> {selectedReportPost?.content || "-"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overlay-empty">
+                    Post preview unavailable for this report.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -9,6 +9,19 @@ import Story from "../models/stories.js";
 
 export const home = express.Router();
 
+const allowTypes = (req, next, allowed) => {
+  const managerType = req.actor?.managerType;
+  if (!allowed.includes(managerType)) {
+    const err = new Error(
+      `Access denied for manager type '${managerType || "unknown"}'`
+    );
+    err.statusCode = 403;
+    next(err);
+    return false;
+  }
+  return true;
+};
+
 home.get("/", (req, res) => {
   return res.status(200).json({
     success: true,
@@ -17,8 +30,11 @@ home.get("/", (req, res) => {
 });
 
 home.get("/getUsers", async (req, res, next) => {
+  if (!allowTypes(req, next, ["user", "kids"])) return;
   try {
-    const users = await User.find({}).sort({ followers: -1 }).limit(4);
+    const query =
+      req.actor?.managerType === "kids" ? { type: "Kids" } : { type: "Normal" };
+    const users = await User.find(query).sort({ followers: -1 }).limit(4);
     return res.status(200).json({
       success: true,
       data: users,
@@ -31,6 +47,7 @@ home.get("/getUsers", async (req, res, next) => {
 });
 
 home.get("/getChannels", async (req, res, next) => {
+  if (!allowTypes(req, next, ["channel"])) return;
   try {
     const channels = await Channel.find({}).sort({ followers: -1 }).limit(5);
     return res.status(200).json({
@@ -45,6 +62,7 @@ home.get("/getChannels", async (req, res, next) => {
 });
 
 home.get("/getRevenue", async (req, res, next) => {
+  if (!allowTypes(req, next, ["revenue"])) return;
   try {
     const trans = await Payment.find({});
     let total = 0;
@@ -67,9 +85,13 @@ home.get("/getRevenue", async (req, res, next) => {
 });
 
 home.get("/getUserCount", async (req, res, next) => {
+  if (!allowTypes(req, next, ["user", "kids", "channel"])) return;
   try {
-    const users = await User.find({});
-    const channels = await Channel.find({});
+    const usersQuery =
+      req.actor?.managerType === "kids" ? { type: "Kids" } : { type: "Normal" };
+    const users = await User.find(usersQuery);
+    const channels =
+      req.actor?.managerType === "channel" ? await Channel.find({}) : [];
     return res.status(200).json({
       success: true,
       count: users.length + channels.length,
@@ -82,6 +104,7 @@ home.get("/getUserCount", async (req, res, next) => {
 });
 
 home.get("/getReach", async (req, res, next) => {
+  if (!allowTypes(req, next, ["user", "channel", "kids"])) return;
   try {
     const data = await ActivityLog.aggregate([
       {
@@ -116,6 +139,7 @@ home.get("/getReach", async (req, res, next) => {
 });
 
 home.get("/reportData", async (req, res, next) => {
+  if (!allowTypes(req, next, ["user", "channel", "kids"])) return;
   try {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -159,6 +183,7 @@ home.get("/reportData", async (req, res, next) => {
 });
 
 home.get("/contentActivityToday", async (req, res, next) => {
+  if (!allowTypes(req, next, ["user", "channel", "kids"])) return;
   try {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);

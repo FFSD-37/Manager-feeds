@@ -36,6 +36,12 @@ export const requireManagerAuth = async (req, res, next) => {
       return next(err);
     }
 
+    if (!actor.managerType) {
+      const err = new Error("Manager type is not assigned");
+      err.statusCode = 403;
+      return next(err);
+    }
+
     req.actor = actor;
     return next();
   } catch (e) {

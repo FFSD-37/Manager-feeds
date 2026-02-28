@@ -19,6 +19,11 @@ const adminSchema = new mongoose.Schema({
         enum: ["admin", "manager"],
         default: "admin"
     },
+    managerType: {
+        type: String,
+        enum: ["user", "channel", "kids", "revenue", null],
+        default: null
+    },
     status: {
         type: String,
         enum: ["active", "suspended"],

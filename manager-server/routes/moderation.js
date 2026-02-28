@@ -1,5 +1,6 @@
 import express from "express";
 import Post from "../models/post.js";
+import ManagerAction from "../models/managerAction.js";
 
 export const moderation = express.Router();
 
@@ -19,6 +20,15 @@ moderation.delete("/post/:id", async (req, res, next) => {
       ? `[Removed by manager: ${reason}] ${post.content || ""}`.trim()
       : `[Removed by manager] ${post.content || ""}`.trim();
     await post.save();
+
+    await ManagerAction.create({
+      managerId: req.actor._id,
+      managerUsername: req.actor.username,
+      managerType: req.actor.managerType,
+      actionType: "post_removed",
+      postId: post.id,
+      notes: reason || "",
+    });
 
     return res.status(200).json({
       success: true,

@@ -6,11 +6,13 @@ import cookieParser from "cookie-parser";
 
 import { ErrorHandler } from "./middlewares/Errorhandler.js";
 import { requireManagerAuth } from "./middlewares/authGuard.js";
+import { requireManagerTypes } from "./middlewares/managerScope.js";
 import { home } from "./routes/home.js";
 import { user } from "./routes/userlist.js";
 import { feedback } from "./routes/feedbacks.js";
 import { reports } from "./routes/reports.js";
 import { channel } from "./routes/channels.js";
+import { payment } from "./routes/payments.js";
 import { moderation } from "./routes/moderation.js";
 import { connectDB } from "./DB/Connection.js";
 import { adminLogger } from "./middlewares/adminLogger.js";
@@ -44,11 +46,20 @@ app.get("/healthCheck", (req, res) => {
 app.use("/auth", auth);
 app.use(requireManagerAuth);
 app.use("/home", home);
-app.use("/user", user);
-app.use("/feedback", feedback);
-app.use("/report", reports);
-app.use("/channel", channel);
-app.use("/moderation", moderation);
+app.use("/user", requireManagerTypes(["user", "kids"]), user);
+app.use(
+  "/feedback",
+  requireManagerTypes(["user", "channel", "kids"]),
+  feedback
+);
+app.use("/report", requireManagerTypes(["user", "channel", "kids"]), reports);
+app.use("/channel", requireManagerTypes(["channel"]), channel);
+app.use(
+  "/moderation",
+  requireManagerTypes(["user", "channel", "kids"]),
+  moderation
+);
+app.use("/payment", requireManagerTypes(["revenue"]), payment);
 
 app.use(ErrorHandler);
 

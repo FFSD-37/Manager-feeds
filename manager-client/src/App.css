@@ -192,6 +192,17 @@ button:disabled {
   font-size: 0.84rem;
 }
 
+.type-chip {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #e8f2ff;
+  font-size: 0.75rem;
+}
+
 .avatar {
   width: 34px;
   height: 34px;
@@ -273,6 +284,10 @@ button:disabled {
   gap: 12px;
 }
 
+.kpi-grid.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .kpi-card {
   border: 1px solid var(--stroke);
   border-radius: 14px;
@@ -318,6 +333,10 @@ button:disabled {
   align-items: center;
   padding: 10px 12px;
   border-bottom: 1px solid #ebf1fc;
+}
+
+.table-row.revenue-row {
+  grid-template-columns: 1.3fr 1fr 140px 140px;
 }
 
 .table-head {
@@ -396,6 +415,71 @@ button:disabled {
   color: var(--muted);
 }
 
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 25, 47, 0.62);
+  display: grid;
+  place-items: center;
+  z-index: 999;
+  padding: 16px;
+}
+
+.overlay-card {
+  width: min(940px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.overlay-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.overlay-head h3 {
+  margin: 0;
+}
+
+.overlay-close {
+  background: #ebf3ff;
+  color: #254a82;
+}
+
+.overlay-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 14px;
+}
+
+.overlay-media-wrap p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.overlay-media {
+  width: 100%;
+  max-height: 380px;
+  object-fit: cover;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #f4f8ff;
+}
+
+.overlay-empty {
+  border: 1px dashed #c9d7f1;
+  background: #f6faff;
+  color: #496086;
+  border-radius: 12px;
+  padding: 14px;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -428,7 +512,9 @@ button:disabled {
   }
 
   .nav-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
 }
 
@@ -446,6 +532,10 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .kpi-grid.two-col {
+    grid-template-columns: 1fr;
+  }
+
   .table-row {
     grid-template-columns: 1fr;
   }
@@ -455,6 +545,10 @@ button:disabled {
   }
 
   .nav-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
+  .overlay-grid {
+    grid-template-columns: 1fr;
   }
 }

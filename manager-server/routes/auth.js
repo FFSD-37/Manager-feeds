@@ -23,6 +23,12 @@ auth.post("/login", async (req, res, next) => {
         return next(err);
       }
 
+      if (!user.managerType) {
+        const err = new Error("Manager type is not assigned. Contact admin.");
+        err.statusCode = 403;
+        return next(err);
+      }
+
       if (user.status === "suspended") {
         const err = new Error("Account suspended");
         err.statusCode = 403;
@@ -83,6 +89,12 @@ auth.get("/status", async (req, res, next) => {
     const role = user.role || "admin";
     if (role !== "manager") {
       const err = new Error("Not authenticated for manager portal");
+      err.statusCode = 403;
+      return next(err);
+    }
+
+    if (!user.managerType) {
+      const err = new Error("Manager type is not assigned");
       err.statusCode = 403;
       return next(err);
     }

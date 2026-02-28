@@ -5,7 +5,9 @@ export const user = express.Router();
 
 user.get("/list", async (req, res, next) => {
     try {
-        const users = await User.find({}).sort({ followers: -1 });
+        const managerType = req.actor?.managerType;
+        const query = managerType === "kids" ? { type: "Kids" } : { type: "Normal" };
+        const users = await User.find(query).sort({ followers: -1 });
         return res.status(200).json({
             success: true,
             data: users
