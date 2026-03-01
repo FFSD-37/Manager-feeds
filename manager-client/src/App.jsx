@@ -63,6 +63,16 @@ function App() {
   const [users, setUsers] = useState([]);
   const [channels, setChannels] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // User detail management
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userDetailOverlayOpen, setUserDetailOverlayOpen] = useState(false);
+  const [userPosts, setUserPosts] = useState([]);
+  const [userReports, setUserReports] = useState({ reportedByUser: [], reportsAgainstUser: [] });
+  const [userDetailTab, setUserDetailTab] = useState("profile");
+  const [userWarnReason, setUserWarnReason] = useState("");
+  const [userBanReason, setUserBanReason] = useState("");
 
   const [postId, setPostId] = useState("");
   const [reason, setReason] = useState("");
@@ -211,6 +221,108 @@ function App() {
     const data = await api("/user/list");
     setUsers(data.data || []);
   }
+
+  async function openUserDetails(user) {
+    setBusy(true);
+    setMessage("");
+    try {
+      setSelectedUser(user);
+      const [postsData, reportsData] = await Promise.all([
+        api(`/moderation/user/${user.username}/posts`),
+        api(`/moderation/user/${user.username}/reports`),
+      ]);
+      setUserPosts(postsData.posts || []);
+      setUserReports(reportsData || { reportedByUser: [], reportsAgainstUser: [] });
+      setUserDetailTab("profile");
+      setUserDetailOverlayOpen(true);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function closeUserDetailsOverlay() {
+    setUserDetailOverlayOpen(false);
+    setSelectedUser(null);
+    setUserPosts([]);
+    setUserReports({ reportedByUser: [], reportsAgainstUser: [] });
+    setUserWarnReason("");
+    setUserBanReason("");
+  }
+
+  async function handleWarnUser() {
+    if (!selectedUser || !userWarnReason.trim()) {
+      setMessage("Please provide a reason for warning");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      await api(`/moderation/user/${selectedUser.username}/warn`, {
+        method: "POST",
+        body: JSON.stringify({ reason: userWarnReason }),
+      });
+      setMessage(`User ${selectedUser.username} has been warned.`);
+      setUserWarnReason("");
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleBanUser() {
+    if (!selectedUser || !userBanReason.trim()) {
+      setMessage("Please provide a reason for banning");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      await api(`/moderation/user/${selectedUser.username}/ban`, {
+        method: "POST",
+        body: JSON.stringify({ reason: userBanReason }),
+      });
+      setMessage(`User ${selectedUser.username} has been banned.`);
+      setUserBanReason("");
+      await loadUsers();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemoveUserPost(post) {
+    if (!window.confirm(`Remove this post by ${selectedUser.username}?`)) return;
+    setBusy(true);
+    try {
+      await api(`/moderation/post/${post._id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ reason: "Removed by manager review" }),
+      });
+      setMessage("Post removed successfully.");
+      // Refresh user posts
+      const postsData = await api(`/moderation/user/${selectedUser.username}/posts`);
+      setUserPosts(postsData.posts || []);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.username?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.fullName?.toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
 
   async function loadChannels() {
     const data = await api("/channel/list");
@@ -468,16 +580,42 @@ function App() {
           )}
 
           {activeTab === "users" && (
-            <section className="cards-list">
-              {users.map((u, idx) => (
-                <article className="info-card animated-row" style={{ animationDelay: `${idx * 35}ms` }} key={u._id}>
-                  <strong>{u.username || u.name || "Unnamed"}</strong>
-                  <p>{u.email || "No email"}</p>
-                  <p>Type: {u.type || "Normal"}</p>
-                  <p>Followers: {u.followers?.length ?? u.followers ?? 0}</p>
-                </article>
-              ))}
-              {!users.length ? <p className="empty">No users found.</p> : null}
+            <section className="users-management">
+              <div className="search-bar">
+                <input
+                  type="text"
+                  placeholder="Search by username, email, or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                <span className="result-count">{filteredUsers.length} users found</span>
+              </div>
+              <div className="cards-list">
+                {filteredUsers.map((u, idx) => (
+                  <article
+                    className="info-card user-card animated-row"
+                    style={{ animationDelay: `${idx * 35}ms` }}
+                    key={u._id}
+                    onClick={() => openUserDetails(u)}
+                  >
+                    <div className="user-card-header">
+                      <div className="user-avatar">{String(u.username || "U").charAt(0).toUpperCase()}</div>
+                      <div className="user-info-main">
+                        <strong>{u.username || u.name || "Unnamed"}</strong>
+                        <p className="user-email">{u.email || "No email"}</p>
+                      </div>
+                    </div>
+                    <div className="user-card-meta">
+                      <span className="badge">{u.type || "Normal"}</span>
+                      <span className="user-stat">👥 {u.followers?.length ?? 0} followers</span>
+                      <span className="user-stat">🔒 {u.visibility || "Public"}</span>
+                    </div>
+                    {u.isPremium && <span className="premium-badge">★ Premium</span>}
+                  </article>
+                ))}
+                {!filteredUsers.length ? <p className="empty">No users found.</p> : null}
+              </div>
             </section>
           )}
 
@@ -575,6 +713,205 @@ function App() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {userDetailOverlayOpen ? (
+        <div className="overlay-backdrop" onClick={closeUserDetailsOverlay}>
+          <div className="overlay-card user-detail-overlay" onClick={(e) => e.stopPropagation()}>
+            <div className="overlay-head">
+              <div className="user-detail-header">
+                <div className="user-detail-avatar">{String(selectedUser?.username || "U").charAt(0).toUpperCase()}</div>
+                <div>
+                  <h3>{selectedUser?.username || "User"}</h3>
+                  <p className="user-detail-subtitle">{selectedUser?.email || "No email"}</p>
+                </div>
+              </div>
+              <button className="overlay-close" onClick={closeUserDetailsOverlay}>
+                Close
+              </button>
+            </div>
+
+            <div className="user-detail-tabs">
+              {["profile", "posts", "reports", "actions"].map((tab) => (
+                <button
+                  key={tab}
+                  className={userDetailTab === tab ? "detail-tab active" : "detail-tab"}
+                  onClick={() => setUserDetailTab(tab)}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {userDetailTab === "profile" && (
+              <div className="user-detail-content">
+                <div className="detail-grid">
+                  <div className="detail-item">
+                    <label>Full Name</label>
+                    <p>{selectedUser?.fullName || "-"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Email</label>
+                    <p>{selectedUser?.email || "-"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Phone</label>
+                    <p>{selectedUser?.phone || "-"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Type</label>
+                    <p>{selectedUser?.type || "Normal"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Gender</label>
+                    <p>{selectedUser?.gender || "-"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Visibility</label>
+                    <p>{selectedUser?.visibility || "Public"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Followers</label>
+                    <p>{selectedUser?.followers?.length ?? 0}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Following</label>
+                    <p>{selectedUser?.followings?.length ?? 0}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Premium</label>
+                    <p>{selectedUser?.isPremium ? "Yes ✓" : "No"}</p>
+                  </div>
+                  <div className="detail-item">
+                    <label>Coins</label>
+                    <p>{selectedUser?.coins ?? 0}</p>
+                  </div>
+                </div>
+                {selectedUser?.bio && (
+                  <div className="detail-section">
+                    <label>Bio</label>
+                    <p className="bio-text">{selectedUser.bio}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {userDetailTab === "posts" && (
+              <div className="user-detail-content">
+                <div className="posts-list">
+                  {userPosts.length > 0 ? (
+                    userPosts.map((post) => (
+                      <div key={post._id || post.id} className="post-item">
+                        <div className="post-header">
+                          <span className="post-type">{post.type || "Post"}</span>
+                          <span className="post-date">{new Date(post.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="post-content">{post.content?.substring(0, 150) || "-"}...</p>
+                        <div className="post-stats">
+                          <span>👍 {post.likes || 0}</span>
+                          <span>💬 {post.comments?.length || 0}</span>
+                          {post.isArchived && <span className="pill pending">Archived</span>}
+                        </div>
+                        {post.url && (
+                          <div className="post-preview">
+                            {post.type === "Reels" ? (
+                              <video src={post.url} className="post-media" />
+                            ) : (
+                              <img src={post.url} alt="Post" className="post-media" />
+                            )}
+                          </div>
+                        )}
+                        <button
+                          className="remove-post-btn"
+                          onClick={() => handleRemoveUserPost(post)}
+                          disabled={busy}
+                        >
+                          Remove Post
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="empty">No posts found.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {userDetailTab === "reports" && (
+              <div className="user-detail-content">
+                <div className="reports-section">
+                  <h4>Reports Against This User ({userReports.reportsAgainstUser?.length || 0})</h4>
+                  {userReports.reportsAgainstUser?.length > 0 ? (
+                    <div className="reports-list">
+                      {userReports.reportsAgainstUser.map((report) => (
+                        <div key={report._id} className="report-item">
+                          <p><strong>Reason:</strong> {report.reason || "Not specified"}</p>
+                          <p><strong>Reporter:</strong> {report.reporter || "Anonymous"}</p>
+                          <p><strong>Status:</strong> <span className={report.status === "Resolved" ? "pill done" : "pill pending"}>{report.status || "Pending"}</span></p>
+                          <p><strong>Date:</strong> {new Date(report.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="empty">No reports against this user.</p>
+                  )}
+                </div>
+
+                <div className="reports-section">
+                  <h4>Reports Made By This User ({userReports.reportedByUser?.length || 0})</h4>
+                  {userReports.reportedByUser?.length > 0 ? (
+                    <div className="reports-list">
+                      {userReports.reportedByUser.map((report) => (
+                        <div key={report._id} className="report-item">
+                          <p><strong>Target:</strong> {report.user_reported || "Not specified"}</p>
+                          <p><strong>Reason:</strong> {report.reason || "Not specified"}</p>
+                          <p><strong>Status:</strong> <span className={report.status === "Resolved" ? "pill done" : "pill pending"}>{report.status || "Pending"}</span></p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="empty">This user has not filed any reports.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {userDetailTab === "actions" && (
+              <div className="user-detail-content">
+                <div className="action-section">
+                  <h4>Warn User</h4>
+                  <div className="action-form">
+                    <textarea
+                      placeholder="Reason for warning..."
+                      value={userWarnReason}
+                     onChange={(e) => setUserWarnReason(e.target.value)}
+                      className="action-textarea"
+                    />
+                    <button onClick={handleWarnUser} disabled={busy} className="action-btn warn-btn">
+                      {busy ? "Processing..." : "Issue Warning"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="action-section danger">
+                  <h4>Ban User</h4>
+                  <p className="danger-text">⚠️ This action will suspend the user account.</p>
+                  <div className="action-form">
+                    <textarea
+                      placeholder="Reason for banning..."
+                      value={userBanReason}
+                      onChange={(e) => setUserBanReason(e.target.value)}
+                      className="action-textarea"
+                    />
+                    <button onClick={handleBanUser} disabled={busy} className="action-btn ban-btn">
+                      {busy ? "Processing..." : "Ban User"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}
