@@ -1,6 +1,17 @@
 export const requireManagerTypes = (allowedTypes = []) => {
   return (req, res, next) => {
-    const managerType = req.actor?.managerType;
+    let managerType = req.actor?.managerType;
+
+    // Normalize manager type (handle plural variants)
+    if (managerType === "users") managerType = "user";
+    if (managerType === "channels") managerType = "channel";
+    if (managerType === "kids") managerType = "kids"; // already correct
+    if (managerType === "revenue") managerType = "revenue"; // already correct
+
+    // Update the req.actor with normalized type
+    if (req.actor) {
+      req.actor.managerType = managerType;
+    }
 
     if (!managerType || !allowedTypes.includes(managerType)) {
       const err = new Error(

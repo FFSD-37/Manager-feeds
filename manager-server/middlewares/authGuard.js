@@ -42,6 +42,12 @@ export const requireManagerAuth = async (req, res, next) => {
       return next(err);
     }
 
+    // Normalize manager type (handle plural variants)
+    let managerType = actor.managerType;
+    if (managerType === "users") managerType = "user";
+    if (managerType === "channels") managerType = "channel";
+    actor.managerType = managerType;
+
     req.actor = actor;
     return next();
   } catch (e) {
