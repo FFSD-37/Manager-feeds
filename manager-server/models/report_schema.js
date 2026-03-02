@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const reportSchema = new mongoose.Schema({
+  report_id: {
+    type: Number,
+    enum: [1, 2, 3, 4, 5, 6],
+    required: true
+  },
   post_id: {
     type: String,
     required: true

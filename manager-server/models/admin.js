@@ -21,7 +21,7 @@ const adminSchema = new mongoose.Schema({
     },
     managerType: {
         type: String,
-        enum: ["user", "channel", "kids", "revenue", null],
+        enum: ["users", "posts", "feedback and revenue", null],
         default: null
     },
     status: {

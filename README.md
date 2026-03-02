@@ -7,10 +7,9 @@ This repository contains:
 
 ## Manager Types
 
-- `user` manager: handles normal users, feedback, reports, and moderation
-- `channel` manager: handles channels, reports, feedback, and moderation
-- `kids` manager: handles kids accounts, reports, feedback, and moderation
-- `revenue` manager: handles payments and revenue analytics
+- `users`: handles normal users, kids accounts, and channels
+- `posts`: handles report queues and post moderation
+- `feedback and revenue`: handles feedback, contact flow, and revenue/payments
 
 ## Run Manager Server
 
@@ -33,6 +32,15 @@ npm run dev
 ## Notes
 
 - Manager access is enforced by `managerType` from the backend.
-- Report queues are filtered by manager type scope.
+- Each manager sees only the modules assigned to their type.
 - Clicking a report in manager client opens an overlay with report details and post preview (when available).
 - Copy `.env-example` to `.env` in `manager-server` before running.
+
+## Report IDs
+
+- `1`: normal/kids account report
+- `2`: channel account report
+- `3`: normal/kids post report
+- `4`: channel post report
+- `5`: normal chat report
+- `6`: channel chat report

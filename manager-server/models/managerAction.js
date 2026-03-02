@@ -13,12 +13,18 @@ const managerActionSchema = new mongoose.Schema(
     },
     managerType: {
       type: String,
-      enum: ["user", "channel", "kids", "revenue"],
+      enum: ["users", "posts", "feedback and revenue"],
       required: true,
     },
     actionType: {
       type: String,
-      enum: ["report_status_changed", "report_resolved", "post_removed"],
+      enum: [
+        "report_status_changed",
+        "report_resolved",
+        "post_removed",
+        "user_warned",
+        "user_banned"
+      ],
       required: true,
     },
     reportId: {

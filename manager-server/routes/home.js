@@ -6,6 +6,7 @@ import ActivityLog from "../models/messages.js";
 import Report from "../models/report_schema.js";
 import Post from "../models/post.js";
 import Story from "../models/stories.js";
+import Feedback from "../models/feedback.js";
 
 export const home = express.Router();
 
@@ -30,11 +31,11 @@ home.get("/", (req, res) => {
 });
 
 home.get("/getUsers", async (req, res, next) => {
-  if (!allowTypes(req, next, ["user", "kids"])) return;
+  if (!allowTypes(req, next, ["users"])) return;
   try {
-    const query =
-      req.actor?.managerType === "kids" ? { type: "Kids" } : { type: "Normal" };
-    const users = await User.find(query).sort({ followers: -1 }).limit(4);
+    const users = await User.find({ type: { $in: ["Normal", "Kids"] } })
+      .sort({ followers: -1 })
+      .limit(6);
     return res.status(200).json({
       success: true,
       data: users,
@@ -47,9 +48,9 @@ home.get("/getUsers", async (req, res, next) => {
 });
 
 home.get("/getChannels", async (req, res, next) => {
-  if (!allowTypes(req, next, ["channel"])) return;
+  if (!allowTypes(req, next, ["users"])) return;
   try {
-    const channels = await Channel.find({}).sort({ followers: -1 }).limit(5);
+    const channels = await Channel.find({}).sort({ channelMembers: -1 }).limit(6);
     return res.status(200).json({
       success: true,
       data: channels,
@@ -62,7 +63,7 @@ home.get("/getChannels", async (req, res, next) => {
 });
 
 home.get("/getRevenue", async (req, res, next) => {
-  if (!allowTypes(req, next, ["revenue"])) return;
+  if (!allowTypes(req, next, ["feedback and revenue"])) return;
   try {
     const trans = await Payment.find({});
     let total = 0;
@@ -84,17 +85,29 @@ home.get("/getRevenue", async (req, res, next) => {
   }
 });
 
-home.get("/getUserCount", async (req, res, next) => {
-  if (!allowTypes(req, next, ["user", "kids", "channel"])) return;
+home.get("/getFeedbackCount", async (req, res, next) => {
+  if (!allowTypes(req, next, ["feedback and revenue"])) return;
   try {
-    const usersQuery =
-      req.actor?.managerType === "kids" ? { type: "Kids" } : { type: "Normal" };
-    const users = await User.find(usersQuery);
-    const channels =
-      req.actor?.managerType === "channel" ? await Channel.find({}) : [];
+    const count = await Feedback.countDocuments({});
     return res.status(200).json({
       success: true,
-      count: users.length + channels.length,
+      count,
+    });
+  } catch (e) {
+    e.statusCode = 500;
+    e.message = "Error fetching feedback count";
+    return next(e);
+  }
+});
+
+home.get("/getUserCount", async (req, res, next) => {
+  if (!allowTypes(req, next, ["users"])) return;
+  try {
+    const users = await User.countDocuments({ type: { $in: ["Normal", "Kids"] } });
+    const channels = await Channel.countDocuments({});
+    return res.status(200).json({
+      success: true,
+      count: users + channels,
     });
   } catch (e) {
     e.statusCode = 500;
@@ -104,7 +117,7 @@ home.get("/getUserCount", async (req, res, next) => {
 });
 
 home.get("/getReach", async (req, res, next) => {
-  if (!allowTypes(req, next, ["user", "channel", "kids"])) return;
+  if (!allowTypes(req, next, ["posts"])) return;
   try {
     const data = await ActivityLog.aggregate([
       {
@@ -124,12 +137,12 @@ home.get("/getReach", async (req, res, next) => {
       },
     ]);
 
-    const count = await ActivityLog.find({});
+    const count = await ActivityLog.countDocuments({});
 
     return res.status(200).json({
       success: true,
       data,
-      count: count.length,
+      count,
     });
   } catch (e) {
     e.statusCode = 500;
@@ -139,7 +152,7 @@ home.get("/getReach", async (req, res, next) => {
 });
 
 home.get("/reportData", async (req, res, next) => {
-  if (!allowTypes(req, next, ["user", "channel", "kids"])) return;
+  if (!allowTypes(req, next, ["posts"])) return;
   try {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -151,11 +164,15 @@ home.get("/reportData", async (req, res, next) => {
       {
         $facet: {
           total: [{ $count: "count" }],
-          pending: [{ $match: { status: "Pending" } }, { $count: "count" }],
+          pending: [
+            { $match: { status: "Pending", report_id: { $in: [3, 4, 5, 6] } } },
+            { $count: "count" },
+          ],
           resolvedToday: [
             {
               $match: {
                 status: "Resolved",
+                report_id: { $in: [3, 4, 5, 6] },
                 updatedAt: { $gte: startOfDay, $lt: endOfDay },
               },
             },
@@ -166,7 +183,8 @@ home.get("/reportData", async (req, res, next) => {
     ]);
 
     const data = {
-      total: stats[0].total[0]?.count || 0,
+      total:
+        (await Report.countDocuments({ report_id: { $in: [3, 4, 5, 6] } })) || 0,
       pending: stats[0].pending[0]?.count || 0,
       resolvedToday: stats[0].resolvedToday[0]?.count || 0,
     };
@@ -183,7 +201,7 @@ home.get("/reportData", async (req, res, next) => {
 });
 
 home.get("/contentActivityToday", async (req, res, next) => {
-  if (!allowTypes(req, next, ["user", "channel", "kids"])) return;
+  if (!allowTypes(req, next, ["posts"])) return;
   try {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);

@@ -1,40 +1,39 @@
 import express from "express";
 import Post from "../models/post.js";
 import User from "../models/user_schema.js";
-import Channel from "../models/channelSchema.js";
 import Report from "../models/report_schema.js";
 import ManagerAction from "../models/managerAction.js";
 
 export const moderation = express.Router();
 
-// Get comprehensive user details for manager
+const requireUsersManager = (req, next) => {
+  if (req.actor?.managerType !== "users") {
+    const err = new Error("Access denied for this module");
+    err.statusCode = 403;
+    next(err);
+    return false;
+  }
+  return true;
+};
+
+const requirePostsManager = (req, next) => {
+  if (req.actor?.managerType !== "posts") {
+    const err = new Error("Access denied for this module");
+    err.statusCode = 403;
+    next(err);
+    return false;
+  }
+  return true;
+};
+
 moderation.get("/user/:username", async (req, res, next) => {
+  if (!requireUsersManager(req, next)) return;
   try {
-    const managerType = req.actor?.managerType;
     const { username } = req.params;
 
-    let user, userType;
-    
-    // Try to find as regular/kids user
-    const foundUser = await User.findOne({ username }).select(
+    const user = await User.findOne({ username }).select(
       "username fullName email phone profilePicture bio type followers followings blockedUsers isPremium coins visibility dob gender createdAt"
     );
-    
-    if (foundUser) {
-      userType = foundUser.type;
-      // Check if manager can access this user
-      if (managerType === "kids" && userType !== "Kids") {
-        const err = new Error("Access denied");
-        err.statusCode = 403;
-        return next(err);
-      }
-      if (managerType === "user" && userType === "Kids") {
-        const err = new Error("Access denied");
-        err.statusCode = 403;
-        return next(err);
-      }
-      user = foundUser.toObject();
-    }
 
     if (!user) {
       const err = new Error("User not found");
@@ -45,7 +44,7 @@ moderation.get("/user/:username", async (req, res, next) => {
     return res.status(200).json({
       success: true,
       user: {
-        ...user,
+        ...user.toObject(),
         followersCount: user.followers?.length || 0,
         followingsCount: user.followings?.length || 0,
       },
@@ -57,27 +56,15 @@ moderation.get("/user/:username", async (req, res, next) => {
   }
 });
 
-// Get user's posts
 moderation.get("/user/:username/posts", async (req, res, next) => {
+  if (!requireUsersManager(req, next)) return;
   try {
-    const managerType = req.actor?.managerType;
     const { username } = req.params;
 
     const user = await User.findOne({ username }).select("type");
     if (!user) {
       const err = new Error("User not found");
       err.statusCode = 404;
-      return next(err);
-    }
-
-    if (managerType === "kids" && user.type !== "Kids") {
-      const err = new Error("Access denied");
-      err.statusCode = 403;
-      return next(err);
-    }
-    if (managerType === "user" && user.type === "Kids") {
-      const err = new Error("Access denied");
-      err.statusCode = 403;
       return next(err);
     }
 
@@ -98,10 +85,9 @@ moderation.get("/user/:username/posts", async (req, res, next) => {
   }
 });
 
-// Get user's reports
 moderation.get("/user/:username/reports", async (req, res, next) => {
+  if (!requireUsersManager(req, next)) return;
   try {
-    const managerType = req.actor?.managerType;
     const { username } = req.params;
 
     const user = await User.findOne({ username }).select("type");
@@ -126,8 +112,8 @@ moderation.get("/user/:username/reports", async (req, res, next) => {
   }
 });
 
-// Delete user post
 moderation.delete("/post/:id", async (req, res, next) => {
+  if (!requirePostsManager(req, next)) return;
   try {
     const { reason } = req.body || {};
     const post = await Post.findById(req.params.id);
@@ -164,10 +150,9 @@ moderation.delete("/post/:id", async (req, res, next) => {
   }
 });
 
-// Warn user
 moderation.post("/user/:username/warn", async (req, res, next) => {
+  if (!requireUsersManager(req, next)) return;
   try {
-    const managerType = req.actor?.managerType;
     const { username } = req.params;
     const { reason } = req.body || {};
 
@@ -178,19 +163,12 @@ moderation.post("/user/:username/warn", async (req, res, next) => {
       return next(err);
     }
 
-    if (managerType === "kids" && user.type !== "Kids") {
-      const err = new Error("Access denied");
-      err.statusCode = 403;
-      return next(err);
-    }
-
     await ManagerAction.create({
       managerId: req.actor._id,
       managerUsername: req.actor.username,
       managerType: req.actor.managerType,
       actionType: "user_warned",
-      targetUser: username,
-      notes: reason || "User warned for violating community guidelines",
+      notes: `${username}: ${reason || "User warned for violating guidelines"}`,
     });
 
     return res.status(200).json({
@@ -204,12 +182,11 @@ moderation.post("/user/:username/warn", async (req, res, next) => {
   }
 });
 
-// Ban/suspend user
 moderation.post("/user/:username/ban", async (req, res, next) => {
+  if (!requireUsersManager(req, next)) return;
   try {
-    const managerType = req.actor?.managerType;
     const { username } = req.params;
-    const { reason, duration } = req.body || {};
+    const { reason } = req.body || {};
 
     const user = await User.findOne({ username });
     if (!user) {
@@ -218,26 +195,12 @@ moderation.post("/user/:username/ban", async (req, res, next) => {
       return next(err);
     }
 
-    if (managerType === "kids" && user.type !== "Kids") {
-      const err = new Error("Access denied");
-      err.statusCode = 403;
-      return next(err);
-    }
-
-    // Mark user as banned (would need to add isBanned field to User schema)
-    user.isBanned = true;
-    user.banReason = reason || "Violation of community guidelines";
-    user.bannedAt = new Date();
-    await user.save();
-
     await ManagerAction.create({
       managerId: req.actor._id,
       managerUsername: req.actor.username,
       managerType: req.actor.managerType,
       actionType: "user_banned",
-      targetUser: username,
-      notes: reason || "User banned",
-      duration: duration || null,
+      notes: `${username}: ${reason || "User banned by manager"}`,
     });
 
     return res.status(200).json({

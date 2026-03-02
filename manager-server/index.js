@@ -46,20 +46,12 @@ app.get("/healthCheck", (req, res) => {
 app.use("/auth", auth);
 app.use(requireManagerAuth);
 app.use("/home", home);
-app.use("/user", requireManagerTypes(["user", "kids"]), user);
-app.use(
-  "/feedback",
-  requireManagerTypes(["user", "channel", "kids"]),
-  feedback
-);
-app.use("/report", requireManagerTypes(["user", "channel", "kids"]), reports);
-app.use("/channel", requireManagerTypes(["channel"]), channel);
-app.use(
-  "/moderation",
-  requireManagerTypes(["user", "channel", "kids"]),
-  moderation
-);
-app.use("/payment", requireManagerTypes(["revenue"]), payment);
+app.use("/user", requireManagerTypes(["users"]), user);
+app.use("/channel", requireManagerTypes(["users"]), channel);
+app.use("/report", requireManagerTypes(["posts"]), reports);
+app.use("/moderation", requireManagerTypes(["users", "posts"]), moderation);
+app.use("/feedback", requireManagerTypes(["feedback and revenue"]), feedback);
+app.use("/payment", requireManagerTypes(["feedback and revenue"]), payment);
 
 app.use(ErrorHandler);
 

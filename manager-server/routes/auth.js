@@ -4,6 +4,24 @@ import Admin from "../models/admin.js";
 
 const auth = express.Router();
 
+const normalizeManagerType = (rawType) => {
+  if (!rawType) return null;
+
+  if (["users", "user", "kids", "channel", "channels"].includes(rawType)) {
+    return "users";
+  }
+
+  if (["posts", "post"].includes(rawType)) {
+    return "posts";
+  }
+
+  if (["feedback and revenue", "feedback_revenue", "revenue"].includes(rawType)) {
+    return "feedback and revenue";
+  }
+
+  return rawType;
+};
+
 auth.post("/login", async (req, res, next) => {
   if (req.body) {
     const { username, password } = req.body;
@@ -23,7 +41,8 @@ auth.post("/login", async (req, res, next) => {
         return next(err);
       }
 
-      if (!user.managerType) {
+      const managerType = normalizeManagerType(user.managerType);
+      if (!managerType) {
         const err = new Error("Manager type is not assigned. Contact admin.");
         err.statusCode = 403;
         return next(err);
@@ -93,7 +112,8 @@ auth.get("/status", async (req, res, next) => {
       return next(err);
     }
 
-    if (!user.managerType) {
+    const managerType = normalizeManagerType(user.managerType);
+    if (!managerType) {
       const err = new Error("Manager type is not assigned");
       err.statusCode = 403;
       return next(err);
@@ -104,6 +124,8 @@ auth.get("/status", async (req, res, next) => {
       err.statusCode = 403;
       return next(err);
     }
+
+    user.managerType = managerType;
 
     return res.status(200).json({
       isAuthenticated: true,
