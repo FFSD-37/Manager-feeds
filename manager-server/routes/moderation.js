@@ -3,6 +3,8 @@ import Post from "../models/post.js";
 import User from "../models/user_schema.js";
 import Report from "../models/report_schema.js";
 import ManagerAction from "../models/managerAction.js";
+import Channel from "../models/channelSchema.js";
+import channelPost from "../models/channelPost.js";
 
 export const moderation = express.Router();
 
@@ -72,6 +74,38 @@ moderation.get("/user/:username/posts", async (req, res, next) => {
       .select("id type content url likes dislikes isArchived warnings createdAt")
       .sort({ createdAt: -1 })
       .limit(50);
+    
+    console.log(posts);
+
+    return res.status(200).json({
+      success: true,
+      posts: posts || [],
+      count: posts.length,
+    });
+  } catch (e) {
+    e.statusCode = 500;
+    e.message = "Error fetching user posts";
+    return next(e);
+  }
+});
+
+moderation.get("/channel/:username/posts", async (req, res, next) => {
+  if (!requireUsersManager(req, next)) return;
+  try {
+    const { username } = req.params;
+    const user = await Channel.findOne({ channelName: username });
+    if (!user) {
+      const err = new Error("Channel not found");
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    const posts = await channelPost.find({ channel: username })
+      .select("id type content url likes dislikes isArchived warnings createdAt")
+      .sort({ createdAt: -1 })
+      .limit(50);
+    
+    console.log(posts);
 
     return res.status(200).json({
       success: true,

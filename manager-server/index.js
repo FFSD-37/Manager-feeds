@@ -48,7 +48,7 @@ app.use(requireManagerAuth);
 app.use("/home", home);
 app.use("/user", requireManagerTypes(["users"]), user);
 app.use("/channel", requireManagerTypes(["users"]), channel);
-app.use("/report", requireManagerTypes(["posts"]), reports);
+app.use("/report", requireManagerTypes(["posts", "users"]), reports);
 app.use("/moderation", requireManagerTypes(["users", "posts"]), moderation);
 app.use("/feedback", requireManagerTypes(["feedback and revenue"]), feedback);
 app.use("/payment", requireManagerTypes(["feedback and revenue"]), payment);

@@ -8,6 +8,8 @@ const TAB_CONFIG = {
     { id: "overview", label: "Overview" },
     { id: "users", label: "Users" },
     { id: "channels", label: "Channels" },
+    // allow user managers to review account/channel reports
+    { id: "reports", label: "Reports" },
   ],
   posts: [
     { id: "overview", label: "Overview" },
@@ -84,6 +86,8 @@ function App() {
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedReportPost, setSelectedReportPost] = useState(null);
+  const [reportedAccount, setReportedAccount] = useState(null);
+  const [accountPosts, setAccountPosts] = useState([]);
   const [reportOverlayOpen, setReportOverlayOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -163,8 +167,13 @@ function App() {
     setMessage("");
     try {
       await api("/auth/logout", { method: "POST" });
+      // clear client state so login form reappears cleanly
       setIsAuthenticated(false);
       setMe(null);
+      setUsername("");
+      setPassword("");
+      // mark auth check done so that we render login immediately
+      setAuthChecked(true);
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -237,6 +246,8 @@ function App() {
       const data = await api(`/report/${reportId}/details`);
       setSelectedReport(data.report || null);
       setSelectedReportPost(data.post || null);
+      setReportedAccount(data.account || null);
+      setAccountPosts(data.accountPosts || []);
       setReportOverlayOpen(true);
     } catch (err) {
       setMessage(err.message);
@@ -248,6 +259,8 @@ function App() {
   function closeReportOverlay() {
     setSelectedReport(null);
     setSelectedReportPost(null);
+    setReportedAccount(null);
+    setAccountPosts([]);
     setReportOverlayOpen(false);
   }
 
@@ -307,6 +320,21 @@ function App() {
     try {
       setSelectedUser(user);
       const postsData = await api(`/moderation/user/${user.username}/posts`);
+      setUserPosts(postsData.posts || []);
+      setUserOverlayOpen(true);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openChannelOverlay(user) {
+    setBusy(true);
+    setMessage("");
+    try {
+      setSelectedUser(user);
+      const postsData = await api(`/moderation/channel/${user.channelName}/posts`);
       setUserPosts(postsData.posts || []);
       setUserOverlayOpen(true);
     } catch (err) {
@@ -451,7 +479,14 @@ function App() {
               <h1>{tabs.find((t) => t.id === activeTab)?.label || "Dashboard"}</h1>
               <p>{TYPE_LABEL[managerType]} workspace</p>
             </div>
-            <button className="refresh-btn" onClick={() => loadByTab(activeTab)} disabled={busy}>{busy ? "Refreshing..." : "Refresh"}</button>
+            <div className="header-actions">
+              <button className="refresh-btn" onClick={() => loadByTab(activeTab)} disabled={busy}>{busy ? "Refreshing..." : "Refresh"}</button>
+              {activeTab === "overview" && (
+                <button className="logout-btn overview" onClick={handleLogout} disabled={busy}>
+                  Logout
+                </button>
+              )}
+            </div>
           </header>
 
           {message ? <div className="banner">{message}</div> : null}
@@ -530,7 +565,7 @@ function App() {
           {activeTab === "channels" && (
             <section className="cards-list">
               {channels.map((c) => (
-                <article key={c._id} className="info-card">
+                <article key={c._id} className="info-card" onClick={() => openChannelOverlay(c)}>
                   <strong>{c.channelName || "Unnamed channel"}</strong>
                   <p>{c.channelDescription || "-"}</p>
                   <p>Category: {Array.isArray(c.channelCategory) ? c.channelCategory.join(", ") : "-"}</p>
@@ -553,7 +588,7 @@ function App() {
                 <div className="table-row" key={r._id}>
                   <span>#{r.report_number || "-"}</span>
                   <span>{r.user_reported || "-"}</span>
-                  <span>{REPORT_ID_LABEL[r.report_id] || `ID ${r.report_id || "-"}`}</span>
+                  <span>{REPORT_ID_LABEL[r.report_id] || `ID - ${r._id || "-"}`}</span>
                   <span>
                     <span className={r.status === "Resolved" ? "pill done" : "pill pending"}>{r.status || "Pending"}</span>
                   </span>
@@ -634,7 +669,35 @@ function App() {
               </div>
               <div>
                 {selectedReport?.post_id === "On account" ? (
-                  <div className="overlay-empty">Account-level report. No post preview.</div>
+                  // for account-level reports we may show the reported account
+                  reportedAccount ? (
+                    <div className="overlay-account-details">
+                      <h4>
+                        {selectedReport.report_id === 2 ? "Channel" : "User"} Account
+                      </h4>
+                      {Object.entries(reportedAccount).map(([key, val]) => (
+                        <p key={key}>
+                          <strong>{key}:</strong> {String(val)}
+                        </p>
+                      ))}
+                      {accountPosts.length ? (
+                        <>
+                          <h5>Recent Posts</h5>
+                          <div className="cards-list">
+                            {accountPosts.map((p) => (
+                              <article key={p._id || p.id} className="info-card">
+                                <strong>{p.type || "Post"}</strong>
+                                <p>{p.content || "-"}</p>
+                                <p>Likes: {p.likes || 0}</p>
+                              </article>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="overlay-empty">Account-level report. No details available.</div>
+                  )
                 ) : selectedReportPost?.url ? (
                   <div className="overlay-media-wrap">
                     {selectedReportPost?.type === "Reels" ? (
@@ -664,10 +727,10 @@ function App() {
             </div>
             <div className="overlay-grid">
               <div>
-                <p><strong>Name:</strong> {selectedUser?.fullName || "-"}</p>
-                <p><strong>Email:</strong> {selectedUser?.email || "-"}</p>
-                <p><strong>Type:</strong> {selectedUser?.type || "-"}</p>
-                <p><strong>Visibility:</strong> {selectedUser?.visibility || "-"}</p>
+                <p>{selectedUser?.fullName || selectedUser.channelName || "-"}</p>
+                <p>{selectedUser?.email || selectedUser.channelDescription || "-"}</p>
+                <p>{selectedUser?.type}</p>
+                <p>{selectedUser?.visibility}</p>
                 <textarea placeholder="Warn reason" value={warnReason} onChange={(e) => setWarnReason(e.target.value)} />
                 <button onClick={warnUser} disabled={busy}>Warn User</button>
                 <textarea placeholder="Ban reason" value={banReason} onChange={(e) => setBanReason(e.target.value)} />
@@ -678,6 +741,11 @@ function App() {
                 <div className="cards-list">
                   {userPosts.map((p) => (
                     <article key={p._id || p.id} className="info-card">
+                      {p.type === "Reels" ? (
+                        <video className="info-card-image" src={p.url} controls />
+                      ) : (
+                        <img className="info-card-image" src={p.url || "/default-post-image.jpg"} alt="Post preview" />
+                      )}
                       <strong>{p.type || "Post"}</strong>
                       <p>{p.content || "-"}</p>
                       <p>Likes: {p.likes || 0}</p>

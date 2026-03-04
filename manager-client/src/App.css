@@ -380,6 +380,18 @@ body {
   color: #fca5a5;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* additional spacing for the overview logout when in header */
+.logout-btn.overview {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .logout-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ──────────────────────────
@@ -745,6 +757,7 @@ body {
 }
 
 .info-card {
+  cursor: pointer;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -866,10 +879,31 @@ body {
 
 .overlay-grid > div:first-child p {
   font-size: 13.5px;
-  color: var(--text-secondary);
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  line-height: 1.5;
+}
+
+/* account report details inside overlay */
+.overlay-account-details h4 {
+  margin-top: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.overlay-account-details p {
+  font-size: 13.5px;
+  margin: 4px 0;
+}
+
+.info-card-image{
+  width: 100%;
+  height: 160px;
+  background: #000;
+  border-radius: var(--radius-md);
+  margin-top: 12px;
+  object-fit: cover;
+}
+
+.overlay-account-details .cards-list {
+  margin-top: 12px;
 }
 
 .overlay-grid > div:first-child p strong {
