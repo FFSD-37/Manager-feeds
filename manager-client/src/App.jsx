@@ -544,7 +544,7 @@ function App() {
             <section className="table-wrap">
               <div className="table-head table-row">
                 <span>Report #</span>
-                <span>Reported By</span>
+                <span>Reported Account</span>
                 <span>Type</span>
                 <span>Status</span>
                 <span>Actions</span>

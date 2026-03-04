@@ -97,12 +97,10 @@ moderation.get("/user/:username/reports", async (req, res, next) => {
       return next(err);
     }
 
-    const reportedByUser = await Report.find({ reporter: username }).sort({ createdAt: -1 });
     const reportsAgainstUser = await Report.find({ user_reported: username }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
-      reportedByUser: reportedByUser || [],
       reportsAgainstUser: reportsAgainstUser || [],
     });
   } catch (e) {
