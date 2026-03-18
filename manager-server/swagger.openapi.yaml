@@ -1,0 +1,352 @@
+openapi: 3.0.3
+info:
+  title: Feeds Manager Server API
+  version: 1.0.0
+  description: Standalone Swagger/OpenAPI documentation for the Manager backend.
+servers:
+  - url: http://localhost:3002
+tags:
+  - name: Health
+  - name: Auth
+  - name: Dashboard
+  - name: Users
+  - name: Channels
+  - name: Reports
+  - name: Moderation
+  - name: Feedback
+  - name: Payments
+components:
+  securitySchemes:
+    managerCookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth_token
+paths:
+  /healthCheck:
+    get:
+      tags: [Health]
+      summary: Health-check endpoint
+      responses:
+        '200':
+          description: Manager server healthy
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login as manager user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Manager authenticated
+  /auth/status:
+    get:
+      tags: [Auth]
+      summary: Check authenticated manager session
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Manager auth status
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current manager session
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Logged out
+  /home:
+    get:
+      tags: [Dashboard]
+      summary: Basic manager home route
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Home payload
+  /home/getUsers:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard users slice
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Users payload
+  /home/getChannels:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard channels slice
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Channels payload
+  /home/getRevenue:
+    get:
+      tags: [Dashboard]
+      summary: Get total revenue
+      description: Requires manager type feedback and revenue.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Revenue aggregate
+  /home/getFeedbackCount:
+    get:
+      tags: [Dashboard]
+      summary: Get feedback count
+      description: Requires manager type feedback and revenue.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Feedback count
+  /home/getUserCount:
+    get:
+      tags: [Dashboard]
+      summary: Get combined user and channel count
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Total count
+  /home/getReach:
+    get:
+      tags: [Dashboard]
+      summary: Get reach/activity metrics
+      description: Requires manager type posts.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Reach metrics
+  /home/reportData:
+    get:
+      tags: [Dashboard]
+      summary: Get posts-report overview metrics
+      description: Requires manager type posts.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Report metrics
+  /home/contentActivityToday:
+    get:
+      tags: [Dashboard]
+      summary: Get today content activity
+      description: Requires manager type posts.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Content metrics
+  /user/list:
+    get:
+      tags: [Users]
+      summary: Get all normal and kids users
+      description: Mounted only for manager type users.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Users list
+  /channel/list:
+    get:
+      tags: [Channels]
+      summary: Get all channels
+      description: Mounted only for manager type users.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Channels list
+  /report/list:
+    get:
+      tags: [Reports]
+      summary: Get reports within posts-manager scope
+      description: Mounted only for manager type posts.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Reports list with preview data
+  /report/{id}/details:
+    get:
+      tags: [Reports]
+      summary: Get detailed report payload
+      description: Mounted only for manager type posts.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Report details
+  /report/updateReportStatus:
+    post:
+      tags: [Reports]
+      summary: Update report status and log manager action
+      description: Mounted only for manager type posts.
+      security:
+        - managerCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reportId: { type: string }
+                status: { type: string }
+      responses:
+        '200':
+          description: Report status updated
+  /moderation/user/{username}:
+    get:
+      tags: [Moderation]
+      summary: Get user moderation details
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: User moderation payload
+  /moderation/user/{username}/posts:
+    get:
+      tags: [Moderation]
+      summary: Get posts created by a user
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: User posts
+  /moderation/user/{username}/reports:
+    get:
+      tags: [Moderation]
+      summary: Get reports filed against a user
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: User reports
+  /moderation/post/{id}:
+    delete:
+      tags: [Moderation]
+      summary: Remove/archive a post as manager action
+      description: Requires manager type posts.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: Post removed
+  /moderation/user/{username}/warn:
+    post:
+      tags: [Moderation]
+      summary: Warn a user
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: User warned
+  /moderation/user/{username}/ban:
+    post:
+      tags: [Moderation]
+      summary: Ban a user
+      description: Requires manager type users.
+      security:
+        - managerCookieAuth: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: User banned
+  /feedback/list:
+    get:
+      tags: [Feedback]
+      summary: Get all feedback entries
+      description: Mounted only for manager type feedback and revenue.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Feedback list
+  /payment/list:
+    get:
+      tags: [Payments]
+      summary: Get all payment records
+      description: Mounted only for manager type feedback and revenue.
+      security:
+        - managerCookieAuth: []
+      responses:
+        '200':
+          description: Payment list
