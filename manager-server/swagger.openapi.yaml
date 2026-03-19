@@ -2,9 +2,9 @@ openapi: 3.0.3
 info:
   title: Feeds Manager Server API
   version: 1.0.0
-  description: Standalone Swagger/OpenAPI documentation for the Manager backend.
+  description: Complete OpenAPI documentation for all mounted manager-server routes.
 servers:
-  - url: http://localhost:3002
+  - url: http://localhost:3001
 tags:
   - name: Health
   - name: Auth
@@ -21,187 +21,920 @@ components:
       type: apiKey
       in: cookie
       name: auth_token
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [success, statusCode, message]
+      properties:
+        success:
+          type: boolean
+          example: false
+        statusCode:
+          type: integer
+          example: 403
+        message:
+          type: string
+          example: Access denied for this module
+    HealthResponse:
+      type: object
+      required: [success, msg]
+      properties:
+        success:
+          type: boolean
+          example: true
+        msg:
+          type: string
+          example: manager server is healthy
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      required: [success, msg]
+      properties:
+        success:
+          type: boolean
+          example: true
+        msg:
+          type: string
+          example: Successfully extracted manager
+    MessageResponse:
+      type: object
+      required: [success, msg]
+      properties:
+        success:
+          type: boolean
+          example: true
+        msg:
+          type: string
+    AdminUser:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager]
+        managerType:
+          type: string
+          enum: [users, posts, feedback and revenue]
+        status:
+          type: string
+          enum: [active, suspended]
+        twoFactorEnabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    AuthStatusResponse:
+      type: object
+      required: [isAuthenticated, user]
+      properties:
+        isAuthenticated:
+          type: boolean
+          example: true
+        user:
+          $ref: '#/components/schemas/AdminUser'
+    FollowerEntry:
+      type: object
+      properties:
+        username:
+          type: string
+      additionalProperties: true
+    UserSummary:
+      type: object
+      properties:
+        _id:
+          type: string
+        fullName:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        dob:
+          type: string
+          format: date-time
+        visibility:
+          type: string
+          enum: [Public, Private]
+        profilePicture:
+          type: string
+        bio:
+          type: string
+        type:
+          type: string
+          enum: [Kids, Normal, Admin]
+        followers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FollowerEntry'
+        followings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FollowerEntry'
+        blockedUsers:
+          type: array
+          items:
+            type: string
+        isPremium:
+          type: boolean
+        coins:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    ChannelSummary:
+      type: object
+      properties:
+        _id:
+          type: string
+        channelName:
+          type: string
+        channelDescription:
+          type: string
+        channelCategory:
+          type: array
+          items:
+            type: string
+        channelLogo:
+          type: string
+        channelAdmin:
+          type: string
+        channelMembers:
+          type: array
+          items:
+            type: string
+        links:
+          type: array
+          items:
+            type: string
+        postIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    FeedbackEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        subject:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    PaymentEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+        id:
+          type: string
+        username:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        reference_id:
+          type: string
+        amount:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    PostPreview:
+      type: object
+      properties:
+        id:
+          type: string
+        author:
+          type: string
+        type:
+          type: string
+          enum: [Reels, Img]
+        url:
+          type: string
+        content:
+          type: string
+      additionalProperties: true
+    ModerationPost:
+      type: object
+      properties:
+        _id:
+          type: string
+        id:
+          type: string
+        type:
+          type: string
+          enum: [Reels, Img]
+        content:
+          type: string
+        url:
+          type: string
+        likes:
+          type: integer
+        dislikes:
+          type: integer
+        isArchived:
+          type: boolean
+        warnings:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    Report:
+      type: object
+      properties:
+        _id:
+          type: string
+        report_id:
+          type: integer
+          enum: [1, 2, 3, 4, 5, 6]
+        post_id:
+          type: string
+        report_number:
+          type: integer
+        user_reported:
+          type: string
+        status:
+          type: string
+          example: Pending
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
+    ReportWithPreview:
+      allOf:
+        - $ref: '#/components/schemas/Report'
+        - type: object
+          properties:
+            scopeType:
+              type: string
+              enum:
+                - normal_or_kids_post
+                - channel_post
+                - normal_chat
+                - channel_chat
+                - normal_or_kids_account
+                - channel_account
+                - unknown
+            postPreview:
+              oneOf:
+                - $ref: '#/components/schemas/PostPreview'
+                - type: 'null'
+    ReachPoint:
+      type: object
+      properties:
+        _id:
+          type: object
+          properties:
+            year:
+              type: integer
+            month:
+              type: integer
+          additionalProperties: false
+        count:
+          type: integer
+      additionalProperties: true
+    UpdateReportStatusRequest:
+      type: object
+      required: [reportId, status]
+      properties:
+        reportId:
+          type: string
+        status:
+          type: string
+          enum: [Pending, Resolved]
+    ReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    HomeResponse:
+      type: object
+      required: [success, msg]
+      properties:
+        success:
+          type: boolean
+          example: true
+        msg:
+          type: string
+          example: Home page came
+    UsersListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSummary'
+    ChannelsListResponse:
+      type: object
+      required: [success, allchannels]
+      properties:
+        success:
+          type: boolean
+          example: true
+        allchannels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelSummary'
+    DashboardChannelsResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelSummary'
+    RevenueResponse:
+      type: object
+      required: [success, rev]
+      properties:
+        success:
+          type: boolean
+          example: true
+        rev:
+          type: number
+          example: 19450
+    CountResponse:
+      type: object
+      required: [success, count]
+      properties:
+        success:
+          type: boolean
+          example: true
+        count:
+          type: integer
+          example: 125
+    ReachResponse:
+      type: object
+      required: [success, data, count]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReachPoint'
+        count:
+          type: integer
+    ReportDataResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [total, pending, resolvedToday]
+          properties:
+            total:
+              type: integer
+            pending:
+              type: integer
+            resolvedToday:
+              type: integer
+    ContentActivityResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [postsToday, reelsToday, storiesToday]
+          properties:
+            postsToday:
+              type: integer
+            reelsToday:
+              type: integer
+            storiesToday:
+              type: integer
+    ReportsListResponse:
+      type: object
+      required: [success, reports]
+      properties:
+        success:
+          type: boolean
+          example: true
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportWithPreview'
+    ReportDetailsResponse:
+      type: object
+      required: [success, report, post]
+      properties:
+        success:
+          type: boolean
+          example: true
+        report:
+          allOf:
+            - $ref: '#/components/schemas/Report'
+            - type: object
+              properties:
+                scopeType:
+                  type: string
+        post:
+          oneOf:
+            - $ref: '#/components/schemas/PostPreview'
+            - type: 'null'
+    ModerationUserResponse:
+      type: object
+      required: [success, user]
+      properties:
+        success:
+          type: boolean
+          example: true
+        user:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+            - type: object
+              properties:
+                followersCount:
+                  type: integer
+                followingsCount:
+                  type: integer
+    ModerationUserPostsResponse:
+      type: object
+      required: [success, posts, count]
+      properties:
+        success:
+          type: boolean
+          example: true
+        posts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModerationPost'
+        count:
+          type: integer
+    ModerationUserReportsResponse:
+      type: object
+      required: [success, reportsAgainstUser]
+      properties:
+        success:
+          type: boolean
+          example: true
+        reportsAgainstUser:
+          type: array
+          items:
+            $ref: '#/components/schemas/Report'
+    FeedbackListResponse:
+      type: object
+      required: [success, feedbacks]
+      properties:
+        success:
+          type: boolean
+          example: true
+        feedbacks:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedbackEntry'
+    PaymentsListResponse:
+      type: object
+      required: [success, payments]
+      properties:
+        success:
+          type: boolean
+          example: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentEntry'
+
 paths:
   /healthCheck:
     get:
       tags: [Health]
-      summary: Health-check endpoint
+      summary: Health check for manager server
       responses:
         '200':
-          description: Manager server healthy
+          description: Manager server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
   /auth/login:
     post:
       tags: [Auth]
-      summary: Login as manager user
+      summary: Login as manager
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                username: { type: string }
-                password: { type: string }
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Manager authenticated
+          description: Authentication successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Sets auth_token cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not a manager or suspended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/status:
     get:
       tags: [Auth]
-      summary: Check authenticated manager session
+      summary: Check manager authentication status
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Manager auth status
+          description: Session is authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthStatusResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized for manager portal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/logout:
     post:
       tags: [Auth]
-      summary: Logout current manager session
+      summary: Logout current manager
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Logged out
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
   /home:
     get:
       tags: [Dashboard]
-      summary: Basic manager home route
+      summary: Home route
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Home payload
+          description: Home route response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/getUsers:
     get:
       tags: [Dashboard]
-      summary: Get dashboard users slice
-      description: Requires manager type users.
+      summary: Get top users for dashboard
+      description: Accessible only for manager type users.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Users payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/getChannels:
     get:
       tags: [Dashboard]
-      summary: Get dashboard channels slice
-      description: Requires manager type users.
+      summary: Get top channels for dashboard
+      description: Accessible only for manager type users.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Channels payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardChannelsResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/getRevenue:
     get:
       tags: [Dashboard]
       summary: Get total revenue
-      description: Requires manager type feedback and revenue.
+      description: Accessible only for manager type feedback and revenue.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Revenue aggregate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/getFeedbackCount:
     get:
       tags: [Dashboard]
       summary: Get feedback count
-      description: Requires manager type feedback and revenue.
+      description: Accessible only for manager type feedback and revenue.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Feedback count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/getUserCount:
     get:
       tags: [Dashboard]
-      summary: Get combined user and channel count
-      description: Requires manager type users.
+      summary: Get total users plus channels count
+      description: Accessible only for manager type users.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Total count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/getReach:
     get:
       tags: [Dashboard]
-      summary: Get reach/activity metrics
-      description: Requires manager type posts.
+      summary: Get monthly content activity reach
+      description: Accessible only for manager type posts.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Reach metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReachResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/reportData:
     get:
       tags: [Dashboard]
-      summary: Get posts-report overview metrics
-      description: Requires manager type posts.
+      summary: Get report dashboard metrics
+      description: Accessible only for manager type posts.
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Report metrics
+          description: Reports dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDataResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /home/contentActivityToday:
     get:
       tags: [Dashboard]
-      summary: Get today content activity
-      description: Requires manager type posts.
+      summary: Get today's posts, reels, and stories count
+      description: Accessible only for manager type posts.
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Content metrics
+          description: Today's activity summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentActivityResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /user/list:
     get:
       tags: [Users]
       summary: Get all normal and kids users
-      description: Mounted only for manager type users.
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Users list
+          description: Full user list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /channel/list:
     get:
       tags: [Channels]
       summary: Get all channels
-      description: Mounted only for manager type users.
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Channels list
+          description: Channel list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelsListResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /report/list:
     get:
       tags: [Reports]
-      summary: Get reports within posts-manager scope
-      description: Mounted only for manager type posts.
+      summary: Get reports queue for posts manager
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Reports list with preview data
+          description: Reports with post preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportsListResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /report/{id}/details:
     get:
       tags: [Reports]
-      summary: Get detailed report payload
-      description: Mounted only for manager type posts.
+      summary: Get report details by Mongo report id
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
-          description: Report details
+          description: Detailed report payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportDetailsResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /report/updateReportStatus:
     post:
       tags: [Reports]
-      summary: Update report status and log manager action
-      description: Mounted only for manager type posts.
+      summary: Update report status and write manager action log
       security:
         - managerCookieAuth: []
       requestBody:
@@ -209,144 +942,273 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                reportId: { type: string }
-                status: { type: string }
+              $ref: '#/components/schemas/UpdateReportStatusRequest'
       responses:
         '200':
-          description: Report status updated
+          description: Status updated or already same
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /moderation/user/{username}:
     get:
       tags: [Moderation]
-      summary: Get user moderation details
-      description: Requires manager type users.
+      summary: Get moderation view of one user
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: username
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
-          description: User moderation payload
+          description: User details with follower/following counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationUserResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /moderation/user/{username}/posts:
     get:
       tags: [Moderation]
-      summary: Get posts created by a user
-      description: Requires manager type users.
+      summary: Get latest posts created by a user
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: username
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
-          description: User posts
+          description: User posts list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationUserPostsResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /moderation/user/{username}/reports:
     get:
       tags: [Moderation]
       summary: Get reports filed against a user
-      description: Requires manager type users.
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: username
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
-          description: User reports
+          description: Reports against user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationUserReportsResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /moderation/post/{id}:
     delete:
       tags: [Moderation]
-      summary: Remove/archive a post as manager action
-      description: Requires manager type posts.
+      summary: Archive/remove a post by Mongo post id
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                reason: { type: string }
+              $ref: '#/components/schemas/ReasonRequest'
       responses:
         '200':
-          description: Post removed
+          description: Post removal result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /moderation/user/{username}/warn:
     post:
       tags: [Moderation]
-      summary: Warn a user
-      description: Requires manager type users.
+      summary: Warn a user account
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: username
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                reason: { type: string }
+              $ref: '#/components/schemas/ReasonRequest'
       responses:
         '200':
-          description: User warned
+          description: Warn action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /moderation/user/{username}/ban:
     post:
       tags: [Moderation]
-      summary: Ban a user
-      description: Requires manager type users.
+      summary: Ban a user account
       security:
         - managerCookieAuth: []
       parameters:
         - in: path
           name: username
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: false
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                reason: { type: string }
+              $ref: '#/components/schemas/ReasonRequest'
       responses:
         '200':
-          description: User banned
+          description: Ban action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /feedback/list:
     get:
       tags: [Feedback]
       summary: Get all feedback entries
-      description: Mounted only for manager type feedback and revenue.
       security:
         - managerCookieAuth: []
       responses:
         '200':
           description: Feedback list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackListResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /payment/list:
     get:
       tags: [Payments]
       summary: Get all payment records
-      description: Mounted only for manager type feedback and revenue.
       security:
         - managerCookieAuth: []
       responses:
         '200':
-          description: Payment list
+          description: Payments list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentsListResponse'
+        '403':
+          description: Scope denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

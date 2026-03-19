@@ -3,6 +3,10 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import YAML from "yamljs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import { ErrorHandler } from "./middlewares/Errorhandler.js";
 import { requireManagerAuth } from "./middlewares/authGuard.js";
@@ -19,6 +23,10 @@ import { adminLogger } from "./middlewares/adminLogger.js";
 import auth from "./routes/auth.js";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const swaggerDocument = YAML.load(path.join(__dirname, "swagger.openapi.yaml"));
 
 const app = express();
 
@@ -42,6 +50,12 @@ app.get("/healthCheck", (req, res) => {
     msg: "manager server is healthy",
   });
 });
+
+app.get("/api-docs.json", (req, res) => {
+  return res.status(200).json(swaggerDocument);
+});
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use("/auth", auth);
 app.use(requireManagerAuth);
